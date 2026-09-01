@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="referrer" content="no-referrer" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; base-uri 'none'; connect-src 'self'; font-src 'self'; form-action 'none'; img-src 'self'; object-src 'none'; script-src 'self'; style-src 'self'; upgrade-insecure-requests"
+    />
+    <title>Yearn Security Review Library</title>
+    <meta
+      name="description"
+      content="Public read-only library of completed Yearn V3 strategy security reviews."
+    />
+    <link rel="stylesheet" href="./assets/styles.css" />
+    <script src="./assets/app.js" defer></script>
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <header class="shell topbar">
+      <a class="brand" href="./" aria-label="Yearn Strategy Review home">
+        <span class="brand-mark" aria-hidden="true"><img src="./assets/yearn-symbol-white.svg" alt="" /></span>
+        <span>
+          <strong>Strategy Review</strong>
+          <small>Review library</small>
+        </span>
+      </a>
+      <span class="private-pill"><span class="pulse"></span> Public · Read-only</span>
+    </header>
+
+    <main class="shell main-shell">
+      <section id="loading-view" class="center-state">
+        <div class="loader" aria-hidden="true"></div>
+        <p>Waking the audit tapirs…</p>
+      </section>
+
+      <section id="app-view" class="hidden">
+        <div class="hero-row">
+          <div class="hero-copy">
+            <span class="eyebrow">Yearn security archive · Read-only</span>
+            <h1>Reviewed code.<br /><span>Recorded findings.</span></h1>
+            <p class="hero-note">Completed CLI reviews, collected in one searchable-looking-but-deliberately-simple library.</p>
+          </div>
+          <div class="mascot-stage hero-mascot" aria-label="The tapir audit squad at work">
+            <span class="mascot-caption">Archive squad: alphabet-ish</span>
+            <img src="./assets/tapir-audit-squad.jpg" alt="Three tapir security researchers inspecting code, catching bugs, and guarding a report" />
+            <span class="orbit orbit-one">{ }</span>
+            <span class="orbit orbit-two">!bug</span>
+            <div class="identity-card">
+              <span>Publishing source</span>
+              <strong>Owner CLI</strong>
+            </div>
+          </div>
+        </div>
+
+        <aside class="tapir-fact" aria-label="Tapir fact">
+          <span class="tapir-fact-label">Tapir intelligence · #01</span>
+          <p>A zoo-observed Brazilian tapir reportedly had an erect penis about one metre long.</p>
+          <span class="tapir-fact-punchline">The audit squad calls that an unreasonable amount of attack surface.</span>
+          <a href="https://museum-publications.australian.museum/media/dd/documents/AMS389_25_08_1997_LowRes.ab81566.pdf" target="_blank" rel="noopener noreferrer">Australian Museum source ↗</a>
+        </aside>
+
+        <section class="jobs-section" aria-labelledby="jobs-title">
+          <div class="panel-heading jobs-heading">
+            <div>
+              <span class="section-index">01</span>
+              <h2 id="jobs-title">Published reviews</h2>
+            </div>
+            <span id="report-count" class="quota-copy">Loading archive…</span>
+          </div>
+          <div id="jobs-empty" class="empty-state hidden">
+            <span>ʕ•ᴥ•ʔ</span>
+            <h3>No published reviews yet</h3>
+            <p>Completed CLI reviews will appear here automatically.</p>
+          </div>
+          <div id="jobs-list" class="jobs-list"></div>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="report-dialog" class="report-dialog">
+      <img class="report-tapir" src="./assets/tapir-audit-squad.jpg" alt="" aria-hidden="true" />
+      <div class="report-head">
+        <div>
+          <span class="eyebrow">Yearn security review</span>
+          <h2 id="report-title">Security report</h2>
+        </div>
+        <div class="report-actions">
+          <a id="report-download" class="button button-quiet" download>Download</a>
+          <button id="report-close" class="icon-button" type="button" aria-label="Close report">×</button>
+        </div>
+      </div>
+      <div id="report-content" class="report-content" tabindex="0"></div>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>
