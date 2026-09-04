@@ -5,10 +5,23 @@ const views = {
 
 const state = {
   jobs: [],
+  issueNumber: issueNumberFromPath(),
 };
 
 function assetUrl(path) {
-  return new URL(path, document.baseURI).toString();
+  const script = document.querySelector('script[src$="/app.js"]');
+  const scriptUrl = script?.src || new URL("assets/app.js", document.baseURI).toString();
+  return new URL(path, new URL("../", scriptUrl)).toString();
+}
+
+function issueNumberFromPath() {
+  const segments = window.location.pathname.split("/").filter(Boolean);
+  const candidate = segments.at(-1);
+  return /^\d+$/.test(candidate || "") ? Number(candidate) : null;
+}
+
+function issueRouteUrl(issueNumber) {
+  return assetUrl(`${encodeURIComponent(issueNumber)}/`);
 }
 
 function showView(name) {
@@ -81,7 +94,12 @@ function buildJobCard(job) {
   report.className = "button button-primary";
   report.textContent = "Read report";
   report.addEventListener("click", () => openReport(job));
-  actions.append(report);
+  const share = document.createElement("a");
+  share.className = "button button-quiet";
+  share.href = issueRouteUrl(job.issue_number);
+  share.textContent = "Share issue";
+  share.title = `Permanent link for issue #${job.issue_number}`;
+  actions.append(report, share);
 
   card.append(main, metadata, published, actions);
   return card;
@@ -93,13 +111,19 @@ function renderJobs() {
   list.replaceChildren();
   empty.classList.toggle("hidden", state.jobs.length !== 0);
   document.querySelector("#report-count").textContent = `${state.jobs.length} published ${state.jobs.length === 1 ? "report" : "reports"}`;
+  if (state.issueNumber !== null) {
+    document.querySelector("#jobs-title").textContent = `Published reviews for issue #${state.issueNumber}`;
+  }
   state.jobs.forEach((job) => list.append(buildJobCard(job)));
 }
 
 async function loadJobs({ quiet = false } = {}) {
   try {
-    const payload = await api(assetUrl("reports.json"));
-    state.jobs = payload.jobs || [];
+    const payload = await api(assetUrl("reports.json"), { cache: "no-store" });
+    const jobs = payload.jobs || [];
+    state.jobs = state.issueNumber === null
+      ? jobs
+      : jobs.filter((job) => Number(job.issue_number) === state.issueNumber);
     renderJobs();
   } catch (error) {
     if (!quiet) toast(error.message);
@@ -238,6 +262,7 @@ async function openReport(job) {
   try {
     const response = await fetch(reportUrl, {
       credentials: "same-origin",
+      cache: "no-store",
     });
     if (!response.ok) throw new Error("The report could not be loaded.");
     renderMarkdown(content, await response.text());
@@ -250,6 +275,9 @@ async function bootstrap() {
   showView("app");
   try {
     await loadJobs();
+    if (state.issueNumber !== null && state.jobs.length > 0) {
+      await openReport(state.jobs[0]);
+    }
     window.setInterval(() => loadJobs({ quiet: true }), 60_000);
   } catch (error) {
     toast(error.message);
