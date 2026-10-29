@@ -66,7 +66,7 @@ async function api(path, options = {}) {
   return payload;
 }
 
-function buildJobCard(job) {
+function buildReportCard(job, index) {
   const card = document.createElement("article");
   card.className = "job-card";
 
@@ -74,10 +74,10 @@ function buildJobCard(job) {
   main.className = "job-main";
   const number = document.createElement("span");
   number.className = "job-number";
-  number.textContent = `#${job.issue_number ?? "—"}`;
+  number.textContent = index === 0 ? "New" : `#${index + 1}`;
   const identity = document.createElement("div");
   const title = document.createElement("strong");
-  title.textContent = `Issue #${job.issue_number ?? "—"}`;
+  title.textContent = job.title || `Issue #${job.issue_number} review`;
   const mode = document.createElement("small");
   mode.textContent = job.scope === "comment-cutover" ? "Comment-scoped update" : "Full issue review";
   identity.append(title, mode);
@@ -110,27 +110,89 @@ function buildJobCard(job) {
   report.className = "button button-primary";
   report.textContent = "Read report";
   report.addEventListener("click", () => openReport(job));
-  const share = document.createElement("a");
-  share.className = "button button-quiet";
-  share.href = issueRouteUrl(job.issue_number);
-  share.textContent = "Share issue";
-  share.title = `Permanent link for issue #${job.issue_number}`;
-  actions.append(report, share);
+  actions.append(report);
 
   card.append(main, metadata, published, actions);
   return card;
 }
 
+function groupJobs(jobs) {
+  const byIssue = new Map();
+  for (const job of jobs) {
+    const issueNumber = Number(job.issue_number);
+    if (!byIssue.has(issueNumber)) byIssue.set(issueNumber, []);
+    byIssue.get(issueNumber).push(job);
+  }
+  const publishedTime = (job) => Date.parse(job.finished_at || job.published_at) || 0;
+  return Array.from(byIssue, ([issueNumber, reports]) => {
+    reports.sort((a, b) => publishedTime(b) - publishedTime(a) || b.id.localeCompare(a.id));
+    return { issueNumber, reports };
+  }).sort((a, b) => publishedTime(b.reports[0]) - publishedTime(a.reports[0]) || b.issueNumber - a.issueNumber);
+}
+
+function buildIssueGroup(group, expanded) {
+  const details = document.createElement("details");
+  details.className = "issue-group";
+  details.dataset.issueNumber = String(group.issueNumber);
+  details.open = expanded;
+
+  const summary = document.createElement("summary");
+  summary.className = "issue-summary";
+  const number = document.createElement("span");
+  number.className = "job-number";
+  number.textContent = `#${group.issueNumber}`;
+  const identity = document.createElement("span");
+  identity.className = "issue-identity";
+  const title = document.createElement("strong");
+  title.textContent = `Issue #${group.issueNumber}`;
+  const count = document.createElement("small");
+  count.textContent = `${group.reports.length} ${group.reports.length === 1 ? "report" : "reports"} · Latest ${timeAgo(group.reports[0].published_at || group.reports[0].finished_at)}`;
+  identity.append(title, count);
+  const model = document.createElement("span");
+  model.className = "job-model";
+  model.textContent = `Latest: ${modelLabel(group.reports[0].model)}`;
+  const chevron = document.createElement("span");
+  chevron.className = "issue-chevron";
+  chevron.setAttribute("aria-hidden", "true");
+  chevron.textContent = "⌄";
+  summary.append(number, identity, model, chevron);
+
+  const body = document.createElement("div");
+  body.className = "issue-body";
+  const heading = document.createElement("div");
+  heading.className = "issue-body-heading";
+  const label = document.createElement("span");
+  label.textContent = "All reports · newest first";
+  const share = document.createElement("a");
+  share.href = issueRouteUrl(group.issueNumber);
+  share.textContent = "Share this issue ↗";
+  share.title = `Permanent link for issue #${group.issueNumber}`;
+  heading.append(label, share);
+  body.append(heading);
+  group.reports.forEach((job, index) => body.append(buildReportCard(job, index)));
+  details.append(summary, body);
+  return details;
+}
+
 function renderJobs() {
   const list = document.querySelector("#jobs-list");
   const empty = document.querySelector("#jobs-empty");
+  const expanded = new Set(
+    Array.from(list.querySelectorAll(".issue-group[open]"), (group) => Number(group.dataset.issueNumber))
+  );
+  const groups = groupJobs(state.jobs);
   list.replaceChildren();
-  empty.classList.toggle("hidden", state.jobs.length !== 0);
-  document.querySelector("#report-count").textContent = `${state.jobs.length} published ${state.jobs.length === 1 ? "report" : "reports"}`;
+  empty.classList.toggle("hidden", groups.length !== 0);
+  document.querySelector("#report-count").textContent = state.issueNumber === null
+    ? `${groups.length} ${groups.length === 1 ? "issue" : "issues"} · ${state.jobs.length} published ${state.jobs.length === 1 ? "report" : "reports"}`
+    : `${state.jobs.length} published ${state.jobs.length === 1 ? "report" : "reports"}`;
   if (state.issueNumber !== null) {
     document.querySelector("#jobs-title").textContent = `Published reviews for issue #${state.issueNumber}`;
   }
-  state.jobs.forEach((job) => list.append(buildJobCard(job)));
+  groups.forEach((group) => list.append(buildIssueGroup(
+    group,
+    state.issueNumber !== null || expanded.has(group.issueNumber)
+  )));
 }
 
 async function loadJobs({ quiet = false } = {}) {
@@ -291,9 +353,6 @@ async function bootstrap() {
   showView("app");
   try {
     await loadJobs();
-    if (state.issueNumber !== null && state.jobs.length > 0) {
-      await openReport(state.jobs[0]);
-    }
     window.setInterval(() => loadJobs({ quiet: true }), 60_000);
   } catch (error) {
     toast(error.message);
