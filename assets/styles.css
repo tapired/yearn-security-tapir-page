@@ -142,6 +142,8 @@ input:focus, select:focus { border-color: var(--yearn-blue); box-shadow: 0 0 0 3
 .job-main strong { font-size: 13px; }
 .job-main small { margin-top: 5px; color: var(--gray); font: 400 10px/1.3 "Aeonik Mono", ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .07em; }
 .job-progress strong { display: block; color: var(--gray-dark); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.job-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.job-model { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border: 1px solid #315baa; border-radius: 999px; color: #a9c2ff; background: rgba(6,87,249,.12); font: 700 10px/1 "Aeonik Mono", ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .02em; }
 .job-progress small { display: block; margin-top: 7px; color: var(--gray); font: 400 10px/1.3 "Aeonik Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
 .job-state { display: inline-flex; align-items: center; gap: 8px; color: var(--gray-dark); font-size: 11px; text-transform: capitalize; }
 .job-actions { display: flex; justify-content: flex-end; }

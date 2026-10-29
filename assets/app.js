@@ -38,6 +38,16 @@ function timeAgo(value) {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
+function modelLabel(value) {
+  const known = {
+    "gpt-5.6-sol": "GPT-5.6 Sol",
+    "gpt-5.6-terra": "GPT-5.6 Terra",
+    "gpt-5.6-astra": "GPT-5.6 Astra",
+    "gpt-6.1-sol": "GPT-6.1 Sol",
+  };
+  return known[value] || value || "Model not recorded";
+}
+
 function toast(message) {
   const element = document.querySelector("#toast");
   element.textContent = message;
@@ -77,9 +87,15 @@ function buildJobCard(job) {
   metadata.className = "job-progress";
   const reviewType = document.createElement("strong");
   reviewType.textContent = job.mode ? `${job.mode} security review` : "Security review";
+  const tags = document.createElement("div");
+  tags.className = "job-tags";
+  const model = document.createElement("span");
+  model.className = "job-model";
+  model.textContent = modelLabel(job.model);
+  tags.append(model);
   const source = document.createElement("small");
   source.textContent = "yearn/yearn-strategies";
-  metadata.append(reviewType, source);
+  metadata.append(reviewType, tags, source);
 
   const published = document.createElement("div");
   published.className = "job-state";
