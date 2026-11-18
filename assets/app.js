@@ -77,9 +77,11 @@ function buildReportCard(job, index) {
   number.textContent = index === 0 ? "New" : `#${index + 1}`;
   const identity = document.createElement("div");
   const title = document.createElement("strong");
-  title.textContent = job.title || `Issue #${job.issue_number} review`;
+  title.textContent = job.title || (job.target_kind === "repository" ? `${job.repository} review` : `Issue #${job.issue_number} review`);
   const mode = document.createElement("small");
-  mode.textContent = job.scope === "comment-cutover" ? "Comment-scoped update" : "Full issue review";
+  mode.textContent = job.target_kind === "repository"
+    ? "Full repository review"
+    : job.scope === "comment-cutover" ? "Comment-scoped update" : "Full issue review";
   identity.append(title, mode);
   main.append(number, identity);
 
@@ -94,7 +96,7 @@ function buildReportCard(job, index) {
   model.textContent = modelLabel(job.model);
   tags.append(model);
   const source = document.createElement("small");
-  source.textContent = "yearn/yearn-strategies";
+  source.textContent = job.repository || "yearn/yearn-strategies";
   metadata.append(reviewType, tags, source);
 
   const published = document.createElement("div");
@@ -119,6 +121,7 @@ function buildReportCard(job, index) {
 function groupJobs(jobs) {
   const byIssue = new Map();
   for (const job of jobs) {
+    if (job.target_kind === "repository") continue;
     const issueNumber = Number(job.issue_number);
     if (!byIssue.has(issueNumber)) byIssue.set(issueNumber, []);
     byIssue.get(issueNumber).push(job);
@@ -128,6 +131,50 @@ function groupJobs(jobs) {
     reports.sort((a, b) => publishedTime(b) - publishedTime(a) || b.id.localeCompare(a.id));
     return { issueNumber, reports };
   }).sort((a, b) => publishedTime(b.reports[0]) - publishedTime(a.reports[0]) || b.issueNumber - a.issueNumber);
+}
+
+function groupRepositoryJobs(jobs) {
+  const byRepository = new Map();
+  for (const job of jobs) {
+    if (job.target_kind !== "repository") continue;
+    if (!byRepository.has(job.repository)) byRepository.set(job.repository, []);
+    byRepository.get(job.repository).push(job);
+  }
+  const publishedTime = (job) => Date.parse(job.finished_at || job.published_at) || 0;
+  return Array.from(byRepository, ([repository, reports]) => {
+    reports.sort((a, b) => publishedTime(b) - publishedTime(a) || b.id.localeCompare(a.id));
+    return { repository, reports };
+  }).sort((a, b) => publishedTime(b.reports[0]) - publishedTime(a.reports[0]));
+}
+
+function buildRepositoryGroup(group) {
+  const details = document.createElement("details");
+  details.className = "issue-group";
+  const summary = document.createElement("summary");
+  summary.className = "issue-summary";
+  const number = document.createElement("span");
+  number.className = "job-number";
+  number.textContent = "Repo";
+  const identity = document.createElement("span");
+  identity.className = "issue-identity";
+  const title = document.createElement("strong");
+  title.textContent = group.repository;
+  const count = document.createElement("small");
+  count.textContent = `${group.reports.length} ${group.reports.length === 1 ? "report" : "reports"} · Latest ${timeAgo(group.reports[0].published_at || group.reports[0].finished_at)}`;
+  identity.append(title, count);
+  const model = document.createElement("span");
+  model.className = "job-model";
+  model.textContent = `Latest: ${modelLabel(group.reports[0].model)}`;
+  const chevron = document.createElement("span");
+  chevron.className = "issue-chevron";
+  chevron.setAttribute("aria-hidden", "true");
+  chevron.textContent = "⌄";
+  summary.append(number, identity, model, chevron);
+  const body = document.createElement("div");
+  body.className = "issue-body";
+  group.reports.forEach((job, index) => body.append(buildReportCard(job, index)));
+  details.append(summary, body);
+  return details;
 }
 
 function buildIssueGroup(group, expanded) {
@@ -181,10 +228,11 @@ function renderJobs() {
     Array.from(list.querySelectorAll(".issue-group[open]"), (group) => Number(group.dataset.issueNumber))
   );
   const groups = groupJobs(state.jobs);
+  const repositories = groupRepositoryJobs(state.jobs);
   list.replaceChildren();
-  empty.classList.toggle("hidden", groups.length !== 0);
+  empty.classList.toggle("hidden", groups.length !== 0 || repositories.length !== 0);
   document.querySelector("#report-count").textContent = state.issueNumber === null
-    ? `${groups.length} ${groups.length === 1 ? "issue" : "issues"} · ${state.jobs.length} published ${state.jobs.length === 1 ? "report" : "reports"}`
+    ? `${groups.length} ${groups.length === 1 ? "issue" : "issues"} · ${repositories.length} ${repositories.length === 1 ? "repository" : "repositories"} · ${state.jobs.length} published ${state.jobs.length === 1 ? "report" : "reports"}`
     : `${state.jobs.length} published ${state.jobs.length === 1 ? "report" : "reports"}`;
   if (state.issueNumber !== null) {
     document.querySelector("#jobs-title").textContent = `Published reviews for issue #${state.issueNumber}`;
@@ -193,6 +241,7 @@ function renderJobs() {
     group,
     state.issueNumber !== null || expanded.has(group.issueNumber)
   )));
+  repositories.forEach((group) => list.append(buildRepositoryGroup(group)));
 }
 
 async function loadJobs({ quiet = false } = {}) {
@@ -333,7 +382,9 @@ async function openReport(job) {
   const dialog = document.querySelector("#report-dialog");
   const content = document.querySelector("#report-content");
   content.textContent = "A tapir is unrolling the report…";
-  document.querySelector("#report-title").textContent = `Issue #${job.issue_number} security report`;
+  document.querySelector("#report-title").textContent = job.target_kind === "repository"
+    ? `${job.repository} security report`
+    : `Issue #${job.issue_number} security report`;
   const reportUrl = assetUrl(`reports/${encodeURIComponent(job.id)}.md`);
   document.querySelector("#report-download").href = reportUrl;
   dialog.showModal();
